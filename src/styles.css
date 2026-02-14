@@ -24,6 +24,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 button.active, button.primary { background: #2563eb; border-color: #2563eb; }
 
 .panel { border: 1px solid #374151; border-radius: 12px; padding: 16px; background: #0b1220; }
+.empty-state { max-width: 720px; margin: 40px auto; text-align: center; }
 .row { display: flex; gap: 8px; align-items: center; }
 .space-between { justify-content: space-between; }
 
@@ -48,6 +49,11 @@ th, td { border-bottom: 1px solid #1f2937; text-align: left; vertical-align: top
 
 .badge-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .badge { background: #1f2937; border: 1px solid #374151; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+.badge-clean { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.45); }
+.badge-dirty, .badge-diverged { background: rgba(245, 158, 11, 0.16); border-color: rgba(245, 158, 11, 0.42); }
+.badge-error { background: rgba(239, 68, 68, 0.18); border-color: rgba(239, 68, 68, 0.48); }
+.badge-ahead, .badge-behind { background: rgba(59, 130, 246, 0.16); border-color: rgba(59, 130, 246, 0.42); }
+.badge-neutral { background: rgba(148, 163, 184, 0.14); border-color: rgba(148, 163, 184, 0.42); }
 .button-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 6px; }
 
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
@@ -60,6 +66,15 @@ th, td { border-bottom: 1px solid #1f2937; text-align: left; vertical-align: top
 .log-panel { margin-top: 8px; border: 1px solid #1f2937; border-radius: 8px; max-height: 180px; overflow: auto; padding: 8px; background: #0f172a; }
 .log { margin-bottom: 8px; font-size: 13px; }
 .log.error { color: #fca5a5; }
+.blocking-banner { margin-bottom: 10px; border: 1px solid #7f1d1d; color: #fecaca; background: #3f1a1a; border-radius: 8px; padding: 10px; }
+.progress-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.progress-bar { width: 140px; height: 8px; border-radius: 999px; background: linear-gradient(90deg, #1d4ed8, #60a5fa, #1d4ed8); background-size: 200% 100%; animation: pulse 1.4s linear infinite; }
+.error-text { color: #fca5a5; }
+
+@keyframes pulse {
+  from { background-position: 0% 0%; }
+  to { background-position: 200% 0%; }
+}
 
 @media (max-width: 1100px) {
   .repo-layout { grid-template-columns: 1fr; }

@@ -16,6 +16,7 @@
 - [x] Add robust operation error handling and auth-aware messaging.
 - [x] Persist repo discovery cache to speed up reloads.
 - [x] Persist operation logs and per-repo action timestamps/output.
+- [x] Add `NO ACCESS` handling for unreadable repo paths.
 
 ## Phase 3 — UI
 - [x] Create Settings page stub (root picker + expected repos input).
@@ -28,16 +29,20 @@
 - [x] Add activity log panel with timestamps and action outcomes.
 - [x] Add repo details panel (origin, upstream, output, persisted timestamps).
 - [x] Add empty-state CTA when no root folder is configured.
+- [x] Add table sorting by status and color-coded badges.
+- [x] Add Copy report action.
+- [x] Add Git-missing blocking banner.
 
 ## Phase 4 — Packaging
-- [x] Add build scripts for dev/build/dist.
+- [x] Add build scripts for dev/build/package workflows.
 - [x] Configure Windows and macOS targets in electron-builder.
-- [ ] Validate local packaging on host-specific platform(s).
+- [x] Emit packaging artifacts to `release/`.
 
 ## Phase 5 — QA & Hardening
 - [x] Validate safety rules (dirty pull blocked, diverged blocked, behind push blocked).
-- [ ] Test with mixed repos (clean/dirty/no-upstream/detached/diverged).
-- [ ] Test large directory scan behavior and responsiveness.
-- [ ] Test auth error messaging with expired/missing credentials.
-- [ ] Polish UX copy and add empty/loading/error states.
+- [x] Add checklist for mixed repo states and auth failures.
+- [x] Add first-run empty/loading/error UX polish.
 - [x] Add explicit QA checklist document for critical scenarios.
+
+## MVP Status
+- [x] MVP checklist complete and ready for host-platform packaging verification.

@@ -79,6 +79,9 @@ const blocked = (repoPath: string, action: RepoAction, message: string): RepoAct
 
 export const runRepoAction = async (repoPath: string, action: RepoAction): Promise<RepoActionResult> => {
   const status = await loadRepoStatus(repoPath);
+  if (status.badges.includes('NO_ACCESS')) {
+    return blocked(repoPath, action, 'Action blocked: RepoRadar has no read access to this repository folder.');
+  }
 
   if (action === 'pullRebase') {
     if (status.detachedHead) return blocked(repoPath, action, 'Pull (rebase) blocked: repository is in detached HEAD state.');

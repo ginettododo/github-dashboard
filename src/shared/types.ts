@@ -12,7 +12,14 @@ export type RepoBadge =
   | 'NO_UPSTREAM'
   | 'DETACHED_HEAD'
   | 'ERROR'
-  | 'MISSING_LOCALLY';
+  | 'MISSING_LOCALLY'
+  | 'NO_ACCESS';
+
+export type EnvironmentStatus = {
+  gitAvailable: boolean;
+  gitVersion: string | null;
+  vscodeAvailable: boolean;
+};
 
 export type RepoStatus = {
   id: string;

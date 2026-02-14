@@ -1,8 +1,29 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import type { AppSettings, CloneRequest, RepoAction } from '../src/shared/types';
+import type { AppSettings, CloneRequest, EnvironmentStatus, RepoAction } from '../src/shared/types';
 import { cloneRepository, getLogs, getRepos, runRepoAction } from './repoEngine';
+import { runGit } from './repoEngine/git';
+
+const checkVSCodeAvailability = async (): Promise<boolean> => {
+  const childProcess = await import('node:child_process');
+  return new Promise<boolean>((resolve) => {
+    const child = childProcess.spawn('code', ['--version'], { stdio: 'ignore' });
+    child.on('error', () => resolve(false));
+    child.on('close', (code) => resolve(code === 0));
+  });
+};
+
+const getEnvironmentStatus = async (): Promise<EnvironmentStatus> => {
+  const gitVersionResult = await runGit(undefined, ['--version']);
+  const vscodeAvailable = await checkVSCodeAvailability();
+
+  return {
+    gitAvailable: gitVersionResult.ok,
+    gitVersion: gitVersionResult.ok ? gitVersionResult.stdout.trim() : null,
+    vscodeAvailable
+  };
+};
 
 const defaultSettings: AppSettings = {
   rootProjectsFolder: '',
@@ -57,7 +78,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('settings:pick-root-folder', async () => {
     const result = await dialog.showOpenDialog({
-      properties: ['openDirectory']
+      properties: ['openDirectory', 'createDirectory', 'promptToCreate']
     });
 
     if (result.canceled || result.filePaths.length === 0) {
@@ -71,6 +92,8 @@ app.whenReady().then(() => {
     const settings = await readSettings();
     return getRepos(settings, forceRescan);
   });
+
+  ipcMain.handle('env:get-status', async () => getEnvironmentStatus());
 
   ipcMain.handle('repo:get-logs', async () => getLogs());
 

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import fs from 'node:fs/promises';
 import type { RepoBadge, RepoStatus } from '../../src/shared/types';
 import { readRepoMetadata } from './storage';
 
@@ -8,7 +9,7 @@ const execFileAsync = promisify(execFile);
 
 type GitCmdResult = { ok: boolean; stdout: string; stderr: string; code?: number };
 
-export const runGit = async (repoPath: string, args: string[]): Promise<GitCmdResult> => {
+export const runGit = async (repoPath: string | undefined, args: string[]): Promise<GitCmdResult> => {
   try {
     const { stdout, stderr } = await execFileAsync('git', args, { cwd: repoPath, maxBuffer: 1024 * 1024 * 8 });
     return { ok: true, stdout, stderr };
@@ -56,6 +57,32 @@ const parseGitHubSlug = (originUrl: string): string | null => {
 export const loadRepoStatus = async (repoPath: string): Promise<RepoStatus> => {
   const repoName = path.basename(repoPath);
   const now = new Date().toISOString();
+  const metadata = await readRepoMetadata(repoPath);
+
+  try {
+    await fs.access(repoPath, fs.constants.R_OK);
+  } catch {
+    return {
+      id: repoPath,
+      name: repoName,
+      path: repoPath,
+      branch: 'NO ACCESS',
+      detachedHead: false,
+      dirty: false,
+      modifiedCount: 0,
+      untrackedCount: 0,
+      originUrl: '',
+      githubSlug: null,
+      upstream: null,
+      ahead: 0,
+      behind: 0,
+      badges: ['NO_ACCESS'],
+      lastRefreshTime: now,
+      timestamps: metadata,
+      lastCommandOutput: metadata?.lastCommandOutput,
+      error: 'This folder cannot be read by RepoRadar. Check system permissions and folder sharing settings.'
+    };
+  }
 
   const branchRes = await runGit(repoPath, ['symbolic-ref', '--short', '-q', 'HEAD']);
   const detachedHead = !branchRes.ok || !branchRes.stdout.trim();
@@ -94,8 +121,6 @@ export const loadRepoStatus = async (repoPath: string): Promise<RepoStatus> => {
     if (behind > 0) badges.push('BEHIND');
   }
   if (!dirtyInfo.dirty && ahead === 0 && behind === 0 && !detachedHead) badges.push('CLEAN');
-
-  const metadata = await readRepoMetadata(repoPath);
 
   return {
     id: repoPath,

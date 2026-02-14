@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RepoListPage } from './pages/RepoListPage';
 import { SettingsPage } from './pages/SettingsPage';
-import type { AppSettings, OperationLogEntry, RepoAction, RepoStatus } from './shared/types';
+import type { AppSettings, EnvironmentStatus, OperationLogEntry, RepoAction, RepoStatus } from './shared/types';
 
 const emptySettings: AppSettings = {
   rootProjectsFolder: '',
@@ -14,13 +14,16 @@ export default function App() {
   const [repos, setRepos] = useState<RepoStatus[]>([]);
   const [logs, setLogs] = useState<OperationLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Scanning repositories…');
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
   const [activeActions, setActiveActions] = useState<Record<string, RepoAction | undefined>>({});
+  const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
 
   const api = window.repoRadar;
 
   const refreshRepos = async (forceRescan = false) => {
     if (!api) return;
+    setLoadingLabel(forceRescan ? 'Rescanning repositories…' : 'Refreshing status…');
     setLoading(true);
     try {
       const [repoData, logData] = await Promise.all([api.getRepos(forceRescan), api.getLogs()]);
@@ -36,15 +39,24 @@ export default function App() {
 
   useEffect(() => {
     if (!api) return;
-    api.getSettings().then((loaded) => {
+    Promise.all([api.getSettings(), api.getEnvironmentStatus()]).then(([loaded, env]) => {
+      setEnvironment(env);
       setSettings(loaded);
-      if (!loaded.rootProjectsFolder) {
-        setActivePage('repos');
-      } else {
+      if (loaded.rootProjectsFolder) {
         void refreshRepos();
       }
     });
   }, []);
+
+  const pickRootFolder = async () => {
+    if (!api) return;
+    const selected = await api.pickRootFolder();
+    if (!selected) return;
+    const next = { ...settings, rootProjectsFolder: selected };
+    await api.setSettings(next);
+    setSettings(next);
+    await refreshRepos(true);
+  };
 
   const onSaveSettings = async (next: AppSettings) => {
     if (!api) return;
@@ -67,10 +79,30 @@ export default function App() {
     }
   };
 
+  const refreshAll = async () => {
+    if (!api) return;
+    setLoadingLabel('Fetching all repositories…');
+    setLoading(true);
+    try {
+      for (const repo of repos) {
+        if (repo.badges.includes('MISSING_LOCALLY') || repo.badges.includes('NO_ACCESS')) continue;
+        await api.runRepoAction(repo.path, 'fetch');
+      }
+      await refreshRepos(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onClone = async (input: string) => {
     if (!api || !settings.rootProjectsFolder) return;
     await api.cloneRepo({ rootFolder: settings.rootProjectsFolder, input });
     await refreshRepos(true);
+  };
+
+  const openInVSCode = async (repoPath: string) => {
+    if (!api) return;
+    await api.openInVSCode(repoPath);
   };
 
   const subtitle = useMemo(() => {
@@ -98,11 +130,15 @@ export default function App() {
           repos={repos}
           logs={logs}
           loading={loading}
+          loadingLabel={loadingLabel}
           selectedRepoId={selectedRepoId}
           activeActions={activeActions}
           rootFolder={settings.rootProjectsFolder}
+          environment={environment}
           onSelectRepo={setSelectedRepoId}
-          onRefreshAll={() => { void refreshRepos(false); }}
+          onPickRootFolder={pickRootFolder}
+          onOpenInVSCode={openInVSCode}
+          onRefreshAll={() => { void refreshAll(); }}
           onRescan={() => { void refreshRepos(true); }}
           onAction={(repoPath, action) => { void runAction(repoPath, action); }}
           onClone={onClone}
