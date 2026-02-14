@@ -17,7 +17,7 @@ export function SettingsPage({ settings, onSave }: Props) {
   );
 
   const pickRoot = async () => {
-    const selected = await window.repoRadar.pickRootFolder();
+    const selected = await window.repoRadar?.pickRootFolder();
     if (selected) {
       setRootProjectsFolder(selected);
     }
