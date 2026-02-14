@@ -1,76 +1,81 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RepoListPage } from './pages/RepoListPage';
 import { SettingsPage } from './pages/SettingsPage';
-import type { ActivityLogEntry, AppSettings, RepoSummary } from './types';
+import type { AppSettings, OperationLogEntry, RepoAction, RepoStatus } from './shared/types';
 
 const emptySettings: AppSettings = {
   rootProjectsFolder: '',
   expectedRepos: []
 };
 
-const stubRepos: RepoSummary[] = [
-  {
-    id: '1',
-    name: 'github-dashboard',
-    path: '/workspace/github-dashboard',
-    branch: 'main',
-    dirty: false,
-    originUrl: 'git@github.com:example/github-dashboard.git',
-    ahead: 0,
-    behind: 0,
-    badges: ['CLEAN'],
-    lastRefreshTime: new Date().toLocaleTimeString()
-  },
-  {
-    id: '2',
-    name: 'frontend-kit',
-    path: '/workspace/frontend-kit',
-    branch: 'feature/reporadar',
-    dirty: true,
-    originUrl: 'https://github.com/example/frontend-kit.git',
-    ahead: 2,
-    behind: 2,
-    badges: ['DIRTY', 'DIVERGED'],
-    lastRefreshTime: new Date().toLocaleTimeString()
-  }
-];
-
 export default function App() {
   const [activePage, setActivePage] = useState<'repos' | 'settings'>('repos');
   const [settings, setSettings] = useState<AppSettings>(emptySettings);
-  const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
+  const [repos, setRepos] = useState<RepoStatus[]>([]);
+  const [logs, setLogs] = useState<OperationLogEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+  const [activeActions, setActiveActions] = useState<Record<string, RepoAction | undefined>>({});
+
+  const api = window.repoRadar;
+
+  const refreshRepos = async (forceRescan = false) => {
+    if (!api) return;
+    setLoading(true);
+    try {
+      const [repoData, logData] = await Promise.all([api.getRepos(forceRescan), api.getLogs()]);
+      setRepos(repoData);
+      setLogs(logData);
+      if (!selectedRepoId && repoData[0]) {
+        setSelectedRepoId(repoData[0].id);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    window.repoRadar.getSettings().then((loaded: AppSettings) => {
+    if (!api) return;
+    api.getSettings().then((loaded) => {
       setSettings(loaded);
       if (!loaded.rootProjectsFolder) {
-        setActivePage('settings');
+        setActivePage('repos');
+      } else {
+        void refreshRepos();
       }
     });
   }, []);
 
-  const addLog = (message: string, level: ActivityLogEntry['level'] = 'info') => {
-    setLogs((prev) => [{
-      id: crypto.randomUUID(),
-      level,
-      timestamp: new Date().toLocaleTimeString(),
-      message
-    }, ...prev].slice(0, 200));
-  };
-
   const onSaveSettings = async (next: AppSettings) => {
-    await window.repoRadar.setSettings(next);
+    if (!api) return;
+    await api.setSettings(next);
     setSettings(next);
-    addLog('Settings updated.');
+    if (next.rootProjectsFolder) {
+      await refreshRepos(true);
+      setActivePage('repos');
+    }
   };
 
-  const onRefreshAll = () => {
-    addLog('Refresh All invoked (stub). This will run fetch + status only in next milestone.');
+  const runAction = async (repoPath: string, action: RepoAction) => {
+    if (!api) return;
+    setActiveActions((prev) => ({ ...prev, [repoPath]: action }));
+    try {
+      await api.runRepoAction(repoPath, action);
+      await refreshRepos(false);
+    } finally {
+      setActiveActions((prev) => ({ ...prev, [repoPath]: undefined }));
+    }
+  };
+
+  const onClone = async (input: string) => {
+    if (!api || !settings.rootProjectsFolder) return;
+    await api.cloneRepo({ rootFolder: settings.rootProjectsFolder, input });
+    await refreshRepos(true);
   };
 
   const subtitle = useMemo(() => {
     if (!settings.rootProjectsFolder) {
-      return 'Configure settings to begin scanning repositories.';
+      return 'Select a root folder to start monitoring repositories.';
     }
     return `Root: ${settings.rootProjectsFolder}`;
   }, [settings.rootProjectsFolder]);
@@ -89,7 +94,19 @@ export default function App() {
       </header>
 
       {activePage === 'repos' ? (
-        <RepoListPage repos={stubRepos} logs={logs} onRefreshAll={onRefreshAll} />
+        <RepoListPage
+          repos={repos}
+          logs={logs}
+          loading={loading}
+          selectedRepoId={selectedRepoId}
+          activeActions={activeActions}
+          rootFolder={settings.rootProjectsFolder}
+          onSelectRepo={setSelectedRepoId}
+          onRefreshAll={() => { void refreshRepos(false); }}
+          onRescan={() => { void refreshRepos(true); }}
+          onAction={(repoPath, action) => { void runAction(repoPath, action); }}
+          onClone={onClone}
+        />
       ) : (
         <SettingsPage settings={settings} onSave={onSaveSettings} />
       )}

@@ -1,11 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-
-interface AppSettings {
-  rootProjectsFolder: string;
-  expectedRepos: string[];
-}
+import type { AppSettings, CloneRequest, RepoAction } from '../src/shared/types';
+import { cloneRepository, getLogs, getRepos, runRepoAction } from './repoEngine';
 
 const defaultSettings: AppSettings = {
   rootProjectsFolder: '',
@@ -34,10 +31,10 @@ const writeSettings = async (settings: AppSettings) => {
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 980,
-    minHeight: 620,
+    width: 1260,
+    height: 780,
+    minWidth: 1040,
+    minHeight: 680,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     }
@@ -69,6 +66,17 @@ app.whenReady().then(() => {
 
     return result.filePaths[0];
   });
+
+  ipcMain.handle('repo:get-all', async (_event, forceRescan: boolean) => {
+    const settings = await readSettings();
+    return getRepos(settings, forceRescan);
+  });
+
+  ipcMain.handle('repo:get-logs', async () => getLogs());
+
+  ipcMain.handle('repo:action', async (_event, repoPath: string, action: RepoAction) => runRepoAction(repoPath, action));
+
+  ipcMain.handle('repo:clone', async (_event, request: CloneRequest) => cloneRepository(request));
 
   ipcMain.handle('repo:open-folder', async (_event, repoPath: string) => {
     const error = await shell.openPath(repoPath);
