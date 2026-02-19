@@ -120,7 +120,7 @@ export const loadRepoStatus = async (repoPath: string): Promise<RepoStatus> => {
     if (ahead > 0) badges.push('AHEAD');
     if (behind > 0) badges.push('BEHIND');
   }
-  if (!dirtyInfo.dirty && ahead === 0 && behind === 0 && !detachedHead) badges.push('CLEAN');
+  if (!hasStatusError && !dirtyInfo.dirty && ahead === 0 && behind === 0 && !detachedHead) badges.push('CLEAN');
 
   return {
     id: repoPath,

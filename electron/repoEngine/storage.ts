@@ -29,9 +29,25 @@ export const writeRepoCache = async (cache: RepoCache): Promise<void> => {
   await fs.writeFile(cachePath(), JSON.stringify(cache, null, 2), 'utf-8');
 };
 
+const MAX_LOG_ENTRIES = 400;
+const LOG_TRIM_THRESHOLD = 500; // trim when this many lines are present
+
+const trimLogIfNeeded = async (): Promise<void> => {
+  try {
+    const raw = await fs.readFile(logPath(), 'utf-8');
+    const lines = raw.split('\n').filter(Boolean);
+    if (lines.length > LOG_TRIM_THRESHOLD) {
+      await fs.writeFile(logPath(), lines.slice(-MAX_LOG_ENTRIES).join('\n') + '\n', 'utf-8');
+    }
+  } catch {
+    // ignore; file may not exist yet
+  }
+};
+
 export const appendOperationLog = async (entry: OperationLogEntry): Promise<void> => {
   await fs.mkdir(dataDir(), { recursive: true });
   await fs.appendFile(logPath(), `${JSON.stringify(entry)}\n`, 'utf-8');
+  await trimLogIfNeeded();
 };
 
 export const readOperationLogs = async (maxEntries = 400): Promise<OperationLogEntry[]> => {

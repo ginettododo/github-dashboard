@@ -19,7 +19,6 @@ export const getRepos = async (settings: AppSettings, forceRescan = false): Prom
 
   const statuses = await Promise.all(repoPaths.map((repoPath) => loadRepoStatus(repoPath)));
 
-
   await logOperation(settings.rootProjectsFolder, 'scan', true, forceRescan ? 'Repository rescan completed.' : 'Repository status refresh completed.', '', '');
 
   const normalizedExpected = new Set(settings.expectedRepos.map((entry) => entry.trim().toLowerCase()).filter(Boolean));
@@ -103,6 +102,7 @@ export const runRepoAction = async (repoPath: string, action: RepoAction): Promi
   };
 
   const args = argsByAction[action as Exclude<RepoAction, 'clone'>];
+  if (!args) return blocked(repoPath, action, `Unknown action: ${action}`);
   const cmdResult = await runGit(repoPath, args);
   const text = `${cmdResult.stdout}\n${cmdResult.stderr}`.trim();
   const authHint = !cmdResult.ok && isAuthError(text) ? ' Authentication issue detected; verify your Git credentials/token.' : '';
