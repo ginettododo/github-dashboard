@@ -109,13 +109,18 @@ app.whenReady().then(() => {
   ipcMain.handle('repo:open-vscode', async (_event, repoPath: string) => {
     const childProcess = await import('node:child_process');
     return new Promise<{ ok: boolean; message?: string }>((resolve) => {
+      let settled = false;
+      const settle = (val: { ok: boolean; message?: string }) => {
+        if (!settled) { settled = true; resolve(val); }
+      };
       const child = childProcess.spawn('code', [repoPath], {
         stdio: 'ignore',
         detached: true
       });
-      child.on('error', () => resolve({ ok: false, message: 'VS Code command line tool not found.' }));
+      child.on('error', () => settle({ ok: false, message: 'VS Code command line tool not found.' }));
       child.unref();
-      resolve({ ok: true });
+      // Defer success resolution so the error event has a chance to fire first
+      setImmediate(() => settle({ ok: true }));
     });
   });
 

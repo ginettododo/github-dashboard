@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import type { AppSettings } from '../types';
+import { useEffect, useMemo, useState } from 'react';
+import type { AppSettings } from '../shared/types';
 
 type Props = {
   settings: AppSettings;
@@ -10,6 +10,11 @@ export function SettingsPage({ settings, onSave }: Props) {
   const [rootProjectsFolder, setRootProjectsFolder] = useState(settings.rootProjectsFolder);
   const [expectedReposRaw, setExpectedReposRaw] = useState(settings.expectedRepos.join('\n'));
   const [status, setStatus] = useState<string>('');
+
+  useEffect(() => {
+    setRootProjectsFolder(settings.rootProjectsFolder);
+    setExpectedReposRaw(settings.expectedRepos.join('\n'));
+  }, [settings]);
 
   const expectedReposPreview = useMemo(
     () => expectedReposRaw.split('\n').map((line) => line.trim()).filter(Boolean),
